@@ -1,6 +1,6 @@
 <script>
 	import { getContext } from 'svelte';
-	import { fly } from 'svelte/transition';
+	import { fly, fade } from 'svelte/transition';
 	import { t } from 'svelte-i18n';
 	import hotkeys from 'hotkeys-js';
 
@@ -20,7 +20,8 @@
 		bannerList,
 		activeBanner,
 		editorMode,
-		isCustomBanner
+		isCustomBanner,
+		first_time
 	} from '$lib/store/app-stores';
 
 	import MyFund from '$lib/components/MyFund.svelte';
@@ -38,6 +39,8 @@
 			? fly(node, { x: -20, duration: 1000 })
 			: fly(node, { y: -20, duration: 1000 });
 	};
+
+	let p1 = true;
 
 	const selectBanner = (banner) => {
 		if ($activeBanner === banner) return;
@@ -178,7 +181,57 @@
 	{/if}
 </div>
 
+<div>
+	{#if $first_time}
+		<!-- Intro rounded corners message -->
+		<div class="intro" in:fade={{ duration: 1000 }}>
+			<div class="intro-message">
+				Hey there traveller! <br />
+				Paimon is here to help you with your pulls! <br />
+				You can see me on the bottom of the screen! <br />
+			</div>
+			<button
+				class="intro-button"
+				on:click={() => {
+					first_time.set(false);
+					playSfx('close');
+				}}
+			>
+				Continue
+			</button>
+		</div>
+	{/if}
+</div>
+
 <style>
+	.intro {
+		position: fixed;
+		bottom: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		background-color: rgba(0, 0, 0, 0.8);
+		z-index: 100;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.intro-message {
+		color: #fff;
+		font-size: 1.2rem;
+		text-align: center;
+	}
+
+	.intro-button {
+		margin-top: 1rem;
+		padding: 0.5rem 1rem;
+		border-radius: 0.5rem;
+		background-color: #fff;
+		color: #000;
+	}
+
 	#header {
 		position: relative;
 		display: block;

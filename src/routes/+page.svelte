@@ -236,13 +236,13 @@
 	<WelkinCheckin />
 {/if}
 
-{#if showWelcomeModal}
+<!-- {#if showWelcomeModal}
 	{#if shareID}
 		<ModalInitBanner {shareID} />
 	{:else}
 		<ModalWelcome />
 	{/if}
-{/if}
+{/if} -->
 
 <PreloadMeteor />
 

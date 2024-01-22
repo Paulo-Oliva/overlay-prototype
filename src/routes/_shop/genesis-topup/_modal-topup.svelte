@@ -2,13 +2,21 @@
 	import { getContext } from 'svelte';
 	import { t } from 'svelte-i18n';
 	import { cookie } from '$lib/helpers/dataAPI/api-cookie';
-	import { assets, genesis, primogem } from '$lib/store/app-stores';
+	import {
+		assets,
+		genesis,
+		primogem,
+		countdownOver,
+		buyReasons,
+		moneySpentOnTheG
+	} from '$lib/store/app-stores';
 	import { localBalance } from '$lib/helpers/dataAPI/api-localstore';
 	import { playSfx } from '$lib/helpers/audio/audio';
 
 	import Modal from '$lib/components/ModalTpl.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import ModalBalance from '../_modal-balance.svelte';
+	import Countdown from './_countdown.svelte';
 
 	export let data = { qty: 0, bonus: 0, price: '0' };
 
@@ -35,56 +43,184 @@
 		});
 	};
 
-	const handleBuy = () => {
-		const item = autoConvert ? 'primogem' : 'genesis';
-		confirmBuy({ qty: data.qty, bonus: data.bonus, item });
-		openObtained([{ qty: data.qty + data.bonus, item }]);
+	let isCounting = false;
 
-		if (autoConvert) return convertBuy();
-		genesis.update((v) => {
-			const afterUpdate = v + data.qty + data.bonus;
-			localBalance.set('genesis', afterUpdate);
-			return afterUpdate;
+	// TODO: timer popup
+	const handleBuy = () => {
+		isCounting = true;
+		// // Promise that waits till the countdown is over
+		const timer = new Promise((resolve) => {
+			setInterval(() => {
+				if ($countdownOver) {
+					resolve(true);
+				}
+			}, 1000);
+		});
+
+		timer.then(() => {
+			if (!isCounting) return;
+			isCounting = false;
+			const item = autoConvert ? 'primogem' : 'genesis';
+			confirmBuy({ qty: data.qty, bonus: data.bonus, item });
+			openObtained([{ qty: data.qty + data.bonus, item }]);
+
+			if (autoConvert) return convertBuy();
+			genesis.update((v) => {
+				const afterUpdate = v + data.qty + data.bonus;
+				localBalance.set('genesis', afterUpdate);
+				return afterUpdate;
+			});
+
+			// Update the money spent on the game
+			moneySpentOnTheG.update((v) => v + parseInt(data.price.substring(1)));
+			// Add the reason to the list
+			buyReasons.update((v) => [
+				...v,
+				{
+					date: new Date().toLocaleDateString(),
+					reason: document.querySelector('textarea').value,
+					cost: parseInt(data.price.substring(1))
+				}
+			]);
 		});
 	};
 </script>
 
 <ModalBalance itemToBuy="genesis" />
 <Modal on:cancel={closeModal} blank>
-	<div class="genesis-modal">
-		<div class="header">
-			<button class="back" on:click={closeModal}>
-				<i class="gi-angle-left" />
-			</button>
-			<div class="title">{$t('shop.pay')}</div>
+	{#if isCounting}
+		<h1>Processing...</h1>
+
+		<!-- Info for the user -->
+		<div class="info">
+			<h2>
+				You chose to buy <span style="color: red">{data.price}</span> worth of Genesis Crystals
+			</h2>
+			<p>With this money, you could have bought:</p>
+			<div class="items">
+				{#if parseInt(data.price.substring(1)) / 2.5 > 1}
+					<div class="item">
+						<b>
+							{Math.floor(parseInt(data.price.substring(1)) / 2.5)} Coffees
+						</b>
+						<img src="/images/coffee.png" alt="coffee" />
+					</div>
+				{/if}
+				{#if parseInt(data.price.substring(1)) / 10 > 1}
+					<div class="item">
+						<b>
+							{Math.round(parseInt(data.price.substring(1)) / 10)} Movie Tickets
+						</b>
+						<img src="/images/cinema.png" alt="movie" />
+					</div>
+				{/if}
+			</div>
+			<div class="items">
+				{#if parseInt(data.price.substring(1)) / 20 > 1}
+					<div class="item">
+						<b>
+							{Math.ceil(parseInt(data.price.substring(1)) / 20)}-{Math.ceil(
+								parseInt(data.price.substring(1)) / 10
+							)} New Games
+						</b>
+						<img src="/images/game.png" alt="game" />
+					</div>
+				{/if}
+				{#if parseInt(data.price.substring(1)) / 50 > 1}
+					<div class="item">
+						<b>
+							{Math.ceil(parseInt(data.price.substring(1)) / 50)} AAA Games
+						</b>
+						<img src="/images/game.png" alt="game" />
+					</div>
+				{/if}
+			</div>
+			<div class="items">
+				{#if parseInt(data.price.substring(1)) / 35 > 1}
+					<div class="item">
+						<b>
+							{Math.round((parseInt(data.price.substring(1)) / 35 + Number.EPSILON) * 100) / 100} months
+							of a gym membership
+						</b>
+						<img src="/images/gym.png" alt="gym" />
+					</div>
+				{/if}
+				{#if parseInt(data.price.substring(1)) / 7 > 1}
+					<div class="item">
+						<b>
+							{Math.round((parseInt(data.price.substring(1)) / 7 + Number.EPSILON) * 100) / 100} months
+							of a Netflix subscription
+						</b>
+						<img src="/images/netflix.png" alt="netflix" />
+					</div>
+				{/if}
+			</div>
+
+			<div class="reason">
+				<h2>What's your reason for buying Genesis Crystals?</h2>
+				<textarea
+					style="width: 80%; resize: none; border-radius: 0.25rem; padding: 0.5rem; font-size: 1rem;"
+					rows="4"
+					cols="50"
+					placeholder="I am buying Genesis Crystals because..."
+				/>
+			</div>
 		</div>
 
-		<div class="body">
-			<div class="detail">
-				<picture>
-					<span class="product-text">{$t('shop.product')}</span>
-					<Icon type="genesis" width="50%" />
-					<span class="product-name">{$t('shop.item.genesis')} x{data.qty}</span>
-				</picture>
-				<div class="price">{data.price}</div>
+		<!-- Countdown -->
+		<Countdown />
+		<div class="button-payment">
+			<button class="cancel" on:click={() => (isCounting = false)}>Cancel</button>
+		</div>
+	{:else}
+		<div class="genesis-modal">
+			<div class="header">
+				<button class="back" on:click={closeModal}>
+					<i class="gi-angle-left" />
+				</button>
+				<div class="title">{$t('shop.pay')}</div>
 			</div>
 
-			<div class="payment-type">
-				<span>{$t('shop.selectPayment')}</span>
-				<div class="list">
-					{#each ['Childe', 'Tears', 'Wakaranai'] as method}
+			<div class="body">
+				<div class="detail">
+					<picture>
+						<span class="product-text">{$t('shop.product')}</span>
+						<Icon type="genesis" width="50%" />
+						<span class="product-name">{$t('shop.item.genesis')} x{data.qty}</span>
+					</picture>
+					<div class="price">{data.price}</div>
+				</div>
+
+				<div class="payment-type">
+					<span>{$t('shop.selectPayment')}</span>
+					<div class="list">
 						<button
 							class="item"
-							class:selected={method === activeMethod}
-							on:click={() => selectMethod(method)}
+							class:selected={activeMethod === 'wakaranai'}
+							on:click={() => selectMethod('wakaranai')}
 						>
-							<img src={$assets[`payment-${method.toLocaleLowerCase()}.webp`]} alt="method" />
-							{$t(`shop.payment${method}`)}
+							<img src="/images/visa.png" alt="method" />
+							Visa
 						</button>
-					{/each}
+						<button
+							class="item"
+							class:selected={activeMethod === 'childe'}
+							on:click={() => selectMethod('childe')}
+						>
+							<img src="/images/paypall.png" alt="method" />
+							PayPall
+						</button>
+						<button
+							class="item"
+							class:selected={activeMethod === 'tears'}
+							on:click={() => selectMethod('tears')}
+						>
+							<img src="/images/paysafe.png" alt="method" />
+							PaySafeCard
+						</button>
+					</div>
 				</div>
-			</div>
-			<div class="auto-convert">
+				<!-- <div class="auto-convert">
 				<input
 					id="convert"
 					type="checkbox"
@@ -94,14 +230,24 @@
 				/>
 				<label for="convert">{$t('shop.convertPrimo')} </label>
 			</div>
-			<div class="button-payment">
-				<button on:click={handleBuy}>{$t('shop.proceedPayment')}</button>
+			<Countdown /> -->
+				<div class="button-payment">
+					<button on:click={handleBuy}>{$t('shop.proceedPayment')}</button>
+				</div>
 			</div>
 		</div>
-	</div>
+	{/if}
 </Modal>
 
 <style>
+	.items {
+		display: flex;
+		justify-content: space-evenly;
+		/* scroll-snap-type: x mandatory; */
+		overflow: hidden;
+		overflow-x: scroll;
+	}
+
 	.genesis-modal {
 		display: block;
 		width: 100%;

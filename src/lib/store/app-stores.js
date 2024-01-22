@@ -47,3 +47,12 @@ export const editorMode = writable(false);
 export const editID = writable(0);
 export const customData = writable({});
 export const isCustomBanner = writable(false);
+
+// Paimon
+export const infoPannelPaimon = writable(false);
+export const first_time = writable(true);
+export const countdownOver = writable(false);
+
+export const buyReasons = writable([]);
+export const moneySpentOnTheG = writable(0);
+

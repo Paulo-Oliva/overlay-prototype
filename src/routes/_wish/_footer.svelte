@@ -2,6 +2,7 @@
 	import { getContext, setContext } from 'svelte';
 	import { t } from 'svelte-i18n';
 	import hotkeys from 'hotkeys-js';
+	import { fly } from 'svelte/transition';
 	import {
 		acquaint,
 		assets,
@@ -14,7 +15,10 @@
 		multipull,
 		editorMode,
 		preloadVersion,
-		editID
+		editID,
+		genesis,
+		primogem,
+		infoPannelPaimon
 	} from '$lib/store/app-stores';
 	import { playSfx } from '$lib/helpers/audio/audio';
 	import { isNewOutfitReleased } from '$lib/helpers/outfit';
@@ -26,6 +30,7 @@
 	import ButtonGeneral from '$lib/components/ButtonGeneral.svelte';
 	import EpitomizedButton from './epitomized-path/_button.svelte';
 	import BannerPublisher from '../_custom-banner/Publisher.svelte';
+	import InfoPannelP from './_info-pannel-p.svelte';
 
 	export let bannerType = 'beginner';
 
@@ -50,6 +55,19 @@
 		if (page === 'shop') return playSfx('shopopen');
 		return playSfx();
 	};
+
+	let bubbleMsgs = ["Don't forget! You can always get your wishes for free by playing the game."];
+	let showBubble = false;
+	setInterval(() => {
+		if (Math.random() < 0.1) {
+			showBubble = true;
+			setTimeout(() => {
+				showBubble = false;
+			}, 5000);
+		}
+	}, 6000);
+
+	let showElement = false;
 
 	const roll = getContext('doRoll');
 	const handleSingleRollClick = () => {
@@ -121,6 +139,65 @@
 	});
 </script>
 
+<!-- {#if displayPopup}
+	<div class="overlay-div">
+		<div class="white-rectangle">
+			<p style="text-align: center; font-size: 1.5rem; margin-top: 10px;">
+				Hey buddy, I see you're pulling in this banner.
+			</p>
+			<div class="fate-conversion">
+				1 <Icon type="intertwined" style="transform: translateY(-3px); margin: 0 5px;" /> =
+				{price.toFixed(2)}€
+			</div>
+			<div class="could-buy">
+				<p style="text-align: center; font-size: 1.5rem; margin-top: 10px;">
+					You could buy {Math.floor($primogem / 160)}
+					<Icon type="intertwined" /> with your current Starglitter balance.
+				</p>
+			</div>
+			<div class="bottom-left">
+				<div class="bottom-left-content">
+					<p style="text-align: center; font-size: 1.5rem; margin-top: 10px;">
+						You could buy {Math.floor($primogem / 160)}
+						<Icon type="intertwined" /> with your current Starglitter balance.
+					</p>
+				</div>
+			</div>
+		</div>
+
+		<style>
+			.bottom-left {
+				position: relative;
+				width: 100%;
+				height: 100%;
+				border: 5px solid red;
+			}
+
+			.white-rectangle {
+				/* 70% of screen width */
+				width: 70vw;
+				height: 70vh;
+				background-color: white;
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
+				/* rounded corners */
+				border-radius: 25px;
+				/* add shadow on the bottom */
+				box-shadow: 0px 0px 20px 0px rgba(0, 0, 0, 0.1);
+				/* a bit of transparency */
+				opacity: 0.9;
+			}
+			.fate-conversion {
+				/* center horizontally */
+				display: flex;
+				justify-content: center;
+			}
+		</style>
+	</div>
+{/if} -->
+
 {#if showUploader}
 	<BannerPublisher />
 {/if}
@@ -163,6 +240,22 @@
 					{$t('history.text')}
 				</ButtonGeneral>
 			</div>
+			<div>
+				{#if showBubble}
+					<div class="bubble" transition:fly={{ y: -100, duration: 1000 }}>
+						{bubbleMsgs[Math.floor(Math.random() * bubbleMsgs.length)]}
+					</div>
+				{/if}
+				<img
+					src="/images/image.png"
+					alt="Paimon"
+					style="width: 64px; height: 64px; position: absolute; left: 50%; transform: translateX(-50%); bottom: 0; margin-bottom: 10px; z-index: 100;"
+					on:click={() => (infoPannelPaimon.update((v) => !v), playSfx('click'))}
+				/>
+			</div>
+			{#if $infoPannelPaimon}
+				<InfoPannelP />
+			{/if}
 
 			<div class="right roll-button">
 				{#if !isBeginner}
@@ -177,6 +270,7 @@
 							<span style="margin-left: 7px" class:red={currencyUsed < 1 && !isUnlimited}>
 								x 1
 							</span>
+							<span style="color: black; margin-left: 7px"> (3.17€) </span>
 						</div>
 					</button>
 				{/if}
@@ -203,6 +297,12 @@
 						{:else}
 							<span style="margin-left: 7px" class:red={currencyUsed < $multipull && !isUnlimited}>
 								x {$multipull}
+							</span>
+							<span
+								style="color: black; margin-left: 7px"
+								class:red={currencyUsed < 1 && !isUnlimited}
+							>
+								(31.70€)
 							</span>
 						{/if}
 					</div>
@@ -242,6 +342,34 @@
 </div>
 
 <style>
+	.bubble {
+		z-index: 100;
+		position: fixed;
+		bottom: 90px;
+		left: 50%;
+		transform: translateX(-50%);
+
+		background: #f9f9f9;
+		border-radius: 0.4em;
+		width: fit-content;
+		padding: 10px;
+		margin: 0 auto;
+	}
+	.bubble:after {
+		content: '';
+		position: absolute;
+		bottom: 0;
+		left: 50%;
+		width: 0;
+		height: 0;
+		border: 20px solid transparent;
+		border-top-color: #f9f9f9;
+		border-bottom: 0;
+		border-left: 0;
+		margin-left: 10px;
+		margin-bottom: -20px;
+	}
+
 	#footer {
 		position: relative;
 	}
