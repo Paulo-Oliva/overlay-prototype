@@ -270,7 +270,12 @@
 							<span style="margin-left: 7px" class:red={currencyUsed < 1 && !isUnlimited}>
 								x 1
 							</span>
-							<span style="color: black; margin-left: 7px"> (3.17€) </span>
+							<span
+								style="color: black; margin-left: 7px"
+								class:red={currencyUsed < 1 && !isUnlimited}
+							>
+								(3.17€)
+							</span>
 						</div>
 					</button>
 				{/if}
